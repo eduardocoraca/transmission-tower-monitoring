@@ -118,6 +118,9 @@ class SignalDFT:
     def __post_init__(self):
         self.is_compressed=True if self.original_length//2 + 1 > len(self) else False
 
+    def teste(self):
+        pass
+
     def get(self, full=True) -> Tuple[List, List]:
         if full:
             coefficients_left=np.zeros(
