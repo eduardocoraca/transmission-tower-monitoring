@@ -68,6 +68,7 @@ class SignalTime:
             coefficients=X[0 : len(X) // 2 + 1],
             indexes=idx[0 : len(X) // 2 + 1],
             original_length=len(self.signal),
+            ts=self.ts,
         )
 
     def to_spectrum(self, window: str, nperseg: int, poverlap: float) -> SignalSpectrum:
@@ -138,7 +139,7 @@ class SignalDFT:
             X = np.hstack((Xl, Xm, Xr))
         else:
             X = self.coefficients
-        return self.indexes, X
+        return self.indexes, self.coefficients
 
     def to_time(self) -> SignalTime:
         _, full_coefficients = self.get(full=True)
