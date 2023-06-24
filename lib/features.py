@@ -13,12 +13,14 @@ class WPTFeatureExtractor(BaseEstimator, TransformerMixin):
         reduction: str = "energy",
         level: int = 4,
         normalize: bool = False,
+        threshold: float = None,
     ):
         super().__init__()
         self.family = family
         self.reduction = reduction
         self.level = level
         self.normalize = normalize
+        self.threshold = threshold
 
     def rms_reduction(self, x: np.ndarray) -> float:
         return np.sqrt(np.mean(x**2))
@@ -56,11 +58,31 @@ class WPTFeatureExtractor(BaseEstimator, TransformerMixin):
                 )
                 yk.append(yj)
             yk = self.combine_axis(np.array(yk))
+            if self.normalize:
+                yk /= yk.sum()
+                if isinstance(self.threshold, float):
+                    sorted_idx = np.argsort(yk)
+                    sorted_idx = np.flipud(sorted_idx)
+                    sorted_y_cs = np.cumsum(yk[sorted_idx])
+                    sorted_idx_to_zero = np.argwhere(
+                        sorted_y_cs > self.threshold
+                    ).flatten()
+                    if len(sorted_idx_to_zero) > 0:
+                        idx_to_zero = sorted_idx[sorted_idx_to_zero]
+                        yk[idx_to_zero] = 0
             y.append(yk)
 
         y = np.array(y)
-        if self.normalize:
-            y /= y.sum(axis=1, keepdims=True)
+        # if self.normalize:
+        #     y /= y.sum(axis=1, keepdims=True)
+        # if isinstance(self.threshold, float):
+        #     sorted_idx = np.argsort(y)
+        #     sorted_idx = np.flipud(sorted_idx)
+        #     sorted_y_cs = np.cumsum(y[sorted_idx])
+        #     sorted_idx_to_zero = np.argwhere(sorted_y_cs > self.threshold).flatten()
+        #     if len(sorted_idx_to_zero) > 0:
+        #         idx_to_zero = sorted_idx[sorted_idx_to_zero]
+        #         y[idx_to_zero] = 0
         return y
 
     def get_tree(self, signal: SignalTime):

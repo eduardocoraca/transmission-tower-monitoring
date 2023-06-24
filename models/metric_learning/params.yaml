@@ -1,0 +1,9 @@
+cable: 1
+feature_extraction:
+  level: 6
+  family: "db16"
+feature_reduction:
+  dim: 3
+training:
+  num_epochs: 100
+  lr: 1e-3
