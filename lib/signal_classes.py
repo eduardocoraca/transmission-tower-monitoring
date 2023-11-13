@@ -4,48 +4,34 @@ from typing import Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+from interfaces import Signal
 from scipy.fftpack import dct, fft, idct, ifft
 from scipy.signal import spectrogram, welch
 
 
 @dataclass
-class SignalSpectrum:
+class SignalSpectrum(Signal):
     frequencies: list
     magnitudes: list
 
-    def get_spectrum(self) -> Tuple[List, List]:
+    def get(self) -> Tuple[List, List]:
         return self.frequencies, self.magnitudes
-
-    def plot(self, ax, **kwargs):
-        ax.plot(self.frequencies, self.magnitudes, **kwargs)
 
 
 @dataclass
-class SignalSpectrogram:
+class SignalSpectrogram(Signal):
     frequencies: list
     time: list
     magnitudes: np.ndarray
 
-    def get_spectrogram(self) -> Tuple[List, List]:
+    def get(self) -> Tuple[List, List]:
         return self.frequencies, self.time, self.magnitudes
-
-    def plot(self, ax, transpose=False, **kwargs):
-        if transpose:
-            y = self.frequencies
-            x = self.time
-            z = self.magnitudes
-        else:
-            y = self.time
-            x = self.frequencies
-            z = self.magnitudes.T
-        ax.pcolormesh(x, y, z, **kwargs)
 
 
 @dataclass
-class SignalTime:
+class SignalTime(Signal):
     signal: list
     ts: float
-    dct_threshold: float = None
 
     def to_dct(self):
         X = dct(self.signal, type=2, norm="ortho")
@@ -60,16 +46,6 @@ class SignalTime:
     def get_rms(self):
         x = np.array(self.signal)
         return float(np.sqrt((x**2).mean()))
-
-    def to_dft(self):
-        X = fft(self.signal)
-        idx = np.arange(len(X))
-        return SignalDFT(
-            coefficients=X[0 : len(X) // 2 + 1],
-            indexes=idx[0 : len(X) // 2 + 1],
-            original_length=len(self.signal),
-            ts=self.ts,
-        )
 
     def to_spectrum(self, window: str, nperseg: int, poverlap: float) -> SignalSpectrum:
         noverlap = int(poverlap * nperseg)
@@ -97,13 +73,6 @@ class SignalTime:
         )
         return SignalSpectrogram(list(f), list(t), X)
 
-    def plot(self, ax=None, **kwargs):
-        time = self.ts * np.arange(len(self.signal))
-        if ax == None:
-            fig = plt.figure()
-            ax = fig.add_subplot()
-        ax.plot(time, self.signal, **kwargs)
-
     def __len__(self):
         return len(self.signal)
 
@@ -113,77 +82,7 @@ class SignalTime:
 
 
 @dataclass
-class SignalDFT:
-    """This class assumes the signal is Real and the coefficients are the first half."""
-
-    coefficients: List[complex]
-    indexes: list
-    original_length: int
-    ts: float
-    dft_threshold: float = None
-
-    def __post_init__(self):
-        self.is_compressed = (
-            True if self.original_length // 2 + 1 > len(self) else False
-        )
-
-    def get(self, full=True) -> Tuple[List, List]:
-        if full:
-            coefficients_left = np.zeros(
-                self.original_length // 2 + 1, dtype=np.complex128
-            )
-            coefficients_left[self.indexes] = self.coefficients
-            Xl = coefficients_left[0:-1]
-            Xm = coefficients_left[-1]
-            Xr = np.conjugate(np.flipud(Xl))[0:-1]
-            X = np.hstack((Xl, Xm, Xr))
-        else:
-            X = self.coefficients
-        return self.indexes, self.coefficients
-
-    def to_time(self) -> SignalTime:
-        _, full_coefficients = self.get(full=True)
-        x = ifft(full_coefficients)
-        x = np.real(x)
-        return SignalTime(signal=list(x), ts=self.ts)
-
-    def compute_dft_threshold(self, thp: float):
-        """Computes the absolute DFT threhsold value for this signal.
-        Args:
-            thp (float): percentage of the maximum absolute magnitude to keep
-        """
-        if not self.is_compressed:
-            abs_coefficients = np.abs(self.coefficients)
-            self.dft_threshold = thp * abs_coefficients.max()
-        else:
-            print("The DFT is already compressed.")
-
-    def compress(self):
-        if self.is_compressed:
-            print("The DFT is already compressed.")
-        elif self.dft_threshold is None:
-            print("No DFT threshold.")
-        elif isinstance(self.dft_threshold, float):
-            index_to_keep = np.abs(self.coefficients) > self.dft_threshold
-            idx = np.arange(len(self.coefficients))[index_to_keep]
-            self.coefficients = list(np.array(self.coefficients)[idx])
-            self.indexes = idx
-            self.is_compressed = True
-
-    def plot(self, ax=None, **kwargs):
-        _, coefficients = self.get(full=True)
-        frequencies = np.linspace(0, 1 / self.ts / 2, len(coefficients))
-        if ax == None:
-            fig = plt.figure()
-            ax = fig.add_subplot()
-        ax.plot(frequencies, np.abs(coefficients), **kwargs)
-
-    def __len__(self) -> int:
-        return len(self.indexes)
-
-
-@dataclass
-class SignalDCT:
+class SignalDCT(Signal):
     coefficients: list
     indexes: list
     original_length: int
@@ -212,7 +111,6 @@ class SignalDCT:
         if band is None:
             return en
         else:
-            # f = np.linspace(0, (1 / self.ts) / 2, len(self))
             freq = np.linspace(0, (1 / self.ts) / 2, self.original_length)
             freq = freq[self.indexes]
             idx = (freq >= band[0]) & (freq <= band[1])
@@ -264,14 +162,6 @@ class SignalDCT:
             self.indexes = idx
             self.is_compressed = True
 
-    def plot(self, ax=None, **kwargs):
-        _, coefficients = self.get(full=True)
-        frequencies = np.linspace(0, 1 / self.ts / 2, len(coefficients))
-        if ax == None:
-            fig = plt.figure()
-            ax = fig.add_subplot()
-        ax.plot(frequencies, coefficients, **kwargs)
-
     @classmethod
     def combine(cls, dct_1, dct_2):
         idx_1, coef_1 = dct_1.get(full=True)
@@ -287,6 +177,9 @@ class SignalDCT:
 
     def __len__(self) -> int:
         return len(self.indexes)
+
+
+########################
 
 
 @dataclass

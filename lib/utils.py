@@ -1,5 +1,10 @@
+import sys
+
+sys.path.append("..")
+
 import os
 from datetime import datetime
+from typing import Dict
 
 import numpy as np
 import pandas as pd
@@ -8,10 +13,12 @@ import yaml
 from tqdm import tqdm
 from yaml import CLoader as Loader
 
-from lib.signal_classes import (Sample, SignalDCT, SignalSpectrum, SignalTime,
-                                SingleSample)
+from classes.sample import Sample, SingleSample
+# from lib.signal_classes import (
+from classes.signal import SignalDCT, SignalSpectrum, SignalTime
+from lib.features import WPTFeatureExtractor
 
-PATH_TO_JSON_MAPPINGS = "/workspaces/project/lib/json_mappings.yml"
+PATH_TO_JSON_MAPPINGS = r"..\lib\json_mappings.yml"
 
 with open(PATH_TO_JSON_MAPPINGS, "r") as f:
     JSON_MAPPINGS = yaml.load(f, Loader)
@@ -66,16 +73,15 @@ def get_sample_from_json(path: str, sample_id: str, dct: bool = True) -> Sample:
     )
 
 
-def get_samples_from_folder(path: str, min_valid_date: datetime) -> pd.DataFrame:
+def get_samples_from_folder(path: str) -> pd.DataFrame:
     sample_list = []
     date_list = []
     for file_path in tqdm(os.listdir(path)):
         sample_id = file_path.split(".json")[0]
         date = datetime.strptime(sample_id, "%Y_%m_%d_%H_%M")
-        if date >= min_valid_date:
-            sample = get_sample_from_json(path=path + file_path, sample_id=sample_id)
-            sample_list.append(sample)
-            date_list.append(date)
+        sample = get_sample_from_json(path=path + file_path, sample_id=sample_id)
+        sample_list.append(sample)
+        date_list.append(date)
 
     dataset_per_cable = {}
     for k in [1, 2, 3, 4]:
@@ -178,3 +184,31 @@ def get_frequency_center_from_folder(
         df.set_index("sampled_at", inplace=True)
         dataset_per_cable[f"c{cable}"] = df
     return dataset_per_cable
+
+
+def load_transform(
+    path: str, transformer: WPTFeatureExtractor
+) -> Dict[str, pd.DataFrame]:
+    possible_cables = [1, 2, 3, 4]
+    date_list = []
+    features_per_cable = {f"c{cable}": [] for cable in possible_cables}
+    tensions_per_cable = {f"c{cable}": [] for cable in possible_cables}
+    for file_path in tqdm(os.listdir(path)):
+        sample_id = file_path.split(".json")[0]
+        date = datetime.strptime(sample_id, "%Y_%m_%d_%H_%M")
+        sample = get_sample_from_json(path=path + file_path, sample_id=sample_id)
+        for cable in possible_cables:
+            x = np.array([sample[cable - 1].y, sample[cable - 1].z]).reshape(1, -1)
+            # x: np.array([SignalDCT, SignalDCT])
+            xf = transformer.transform(x)
+            features_per_cable[f"c{cable}"].append(xf)
+            tensions_per_cable[f"c{cable}"].append(sample[cable - 1].tension)
+        date_list.append(date)
+
+    for cable in possible_cables:
+        features_per_cable[f"c{cable}"] = pd.DataFrame(
+            np.vstack(features_per_cable[f"c{cable}"]).squeeze(), index=date_list
+        )
+        features_per_cable[f"c{cable}"]["tension"] = tensions_per_cable[f"c{cable}"]
+
+    return features_per_cable

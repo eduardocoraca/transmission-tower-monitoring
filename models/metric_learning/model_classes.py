@@ -15,7 +15,7 @@ class TripletDataset(Dataset):
         neg_t: float = 750,
     ):
         super().__init__()
-        if not isinstance(data, torch.Tensor):
+        if isinstance(data, np.ndarray):
             data = torch.Tensor(data)
         self.data = data  # dim. (N,D)
         self.N = self.data.shape[0]

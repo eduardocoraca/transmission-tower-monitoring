@@ -1,2 +1,4 @@
 *.json
 *.pkl
+*.pyc
+mlruns
