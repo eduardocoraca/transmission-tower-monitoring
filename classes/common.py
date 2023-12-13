@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import Optional
 
 
 class Cables(Enum):
@@ -17,5 +18,5 @@ class Axes(Enum):
 
 @dataclass
 class Id:
-    cable: Enum = None
-    axis: Enum = None
+    cable: Optional[Cables] = None
+    axis: Optional[Axes] = None

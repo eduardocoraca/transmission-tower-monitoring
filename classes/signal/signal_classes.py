@@ -1,43 +1,47 @@
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Any, Optional
 
+import nptyping as npt
 import numpy as np
-from scipy.fftpack import dct, idct
-from scipy.signal import spectrogram, welch
+from scipy.fftpack import dct, idct  # type: ignore
+from scipy.signal import spectrogram, welch  # type: ignore
 
 from classes.common import Id
+from classes.sample.sample_types import SampleTypes
 
 from .interface import Signal
 
 
 @dataclass
 class SignalSpectrum(Signal):
-    frequencies: list
-    magnitudes: list
-    type: str = "psd"
+    frequencies: list[float]
+    magnitudes: list[float]
+    type: str = SampleTypes.PSD
 
-    def get(self) -> Tuple[List, List]:
+    def get(self) -> tuple[list[float], list[float]]:
         return self.frequencies, self.magnitudes
 
 
 @dataclass
-class SignalSpectrogram(Signal):
-    frequencies: list
-    time: list
-    magnitudes: np.ndarray
+class SignalSpectrogram(Signal):  # TODO remove
+    frequencies: list[float]
+    time: list[float]
+    magnitudes: npt.NDArray
 
-    def get(self) -> Tuple[List, List]:
+    def get(
+        self,
+    ) -> tuple[list[float], list[float], npt.NDArray,]:
         return self.frequencies, self.time, self.magnitudes
 
 
 @dataclass
 class SignalTime(Signal):
-    signal: list
+    signal: list[float]
     ts: float
-    type: str = "time"
-    id: Id = Id()
+    id: Id
+    type: SampleTypes = SampleTypes.TIME
 
-    def to_dct(self):
+    def to_dct(self) -> "SignalDCT":
         X = dct(self.signal, type=2, norm="ortho")
         idx = np.arange(len(X))
         return SignalDCT(
@@ -48,7 +52,7 @@ class SignalTime(Signal):
             id=self.id,
         )
 
-    def get_rms(self):
+    def get_rms(self) -> float:
         x = np.array(self.signal)
         return float(np.sqrt((x**2).mean()))
 
@@ -81,7 +85,7 @@ class SignalTime(Signal):
     def __len__(self):
         return len(self.signal)
 
-    def get(self) -> Tuple[List, List]:
+    def get(self) -> tuple[list[float], list[float]]:
         """Returns a tuple of (time, signal) lists."""
         t = np.arange(0, len(self) * self.ts, self.ts)
         return list(t), list(self.signal)
@@ -89,18 +93,18 @@ class SignalTime(Signal):
 
 @dataclass
 class SignalDCT(Signal):
-    coefficients: list
-    indexes: list
+    coefficients: list[float]
+    indexes: list[float]
     original_length: int
     ts: float
-    dct_threshold: float = None
-    type: str = "dct"
-    id: Id = Id()
+    id: Id
+    dct_threshold: Optional[float] = None
+    type: SampleTypes = SampleTypes.DCT
 
     def __post_init__(self):
         self.is_compressed = True if self.original_length > len(self) else False
 
-    def get(self, full=True) -> Tuple[List, List]:
+    def get(self, full=True) -> tuple[list[float], list[float]]:
         if full:
             coefficients = np.zeros(self.original_length)
             coefficients[self.indexes] = self.coefficients
@@ -158,7 +162,7 @@ class SignalDCT(Signal):
         else:
             print("The DCT is already compressed.")
 
-    def compress(self):
+    def compress(self) -> None:
         if self.is_compressed:
             print("The DCT is already compressed.")
         elif self.dct_threshold is None:
@@ -171,7 +175,7 @@ class SignalDCT(Signal):
             self.is_compressed = True
 
     @classmethod
-    def combine(cls, dct_1, dct_2):
+    def combine(cls, dct_1: "SignalDCT", dct_2: "SignalDCT") -> "SignalDCT":
         idx_1, coef_1 = dct_1.get(full=True)
         idx_2, coef_2 = dct_2.get(full=True)
         combined_coef = np.sqrt(coef_1**2 + coef_2**2)

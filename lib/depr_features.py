@@ -2,6 +2,8 @@ import sys
 
 sys.path.append("..")
 
+from typing import Optional
+
 import numpy as np
 from pywt import WaveletPacket
 from scipy.signal import welch
@@ -18,7 +20,7 @@ class WPTFeatureExtractor(BaseEstimator, TransformerMixin):
         reduction: str = "energy",
         level: int = 4,
         normalize: bool = False,
-        threshold: float = None,
+        threshold: Optional[float] = None,
     ):
         super().__init__()
         self.family = family
@@ -36,7 +38,7 @@ class WPTFeatureExtractor(BaseEstimator, TransformerMixin):
     def combine_axis(self, x: np.ndarray) -> np.ndarray:
         return np.sqrt(np.sum(x**2, axis=0))
 
-    def fit(self, x: np.ndarray = None, y: np.ndarray = None):
+    def fit(self, x: Optional[np.ndarray] = None, y: Optional[np.ndarray] = None):
         return self
 
     def transform(self, x: np.ndarray, y=None):
@@ -62,7 +64,8 @@ class WPTFeatureExtractor(BaseEstimator, TransformerMixin):
                     ]
                 )
                 yk.append(yj)
-            yk = self.combine_axis(np.array(yk))
+            yk_array: np.ndarray = np.array(yk)
+            yk = self.combine_axis(yk_array)
             if self.normalize:
                 yk /= yk.sum()
                 if isinstance(self.threshold, float):
@@ -89,15 +92,15 @@ class PCAModel(BaseEstimator, TransformerMixin):
         super().__init__()
         self.cumulative = cumulative
 
-    def fit(self, x: np.ndarray, y: np.ndarray = None):
+    def fit(self, x: np.ndarray, y: Optional[np.ndarray] = None):
         self.model = PCA()
         self.model.fit(x)
         return self
 
-    def transform(self, x: np.ndarray, y: np.ndarray = None):
+    def transform(self, x: np.ndarray, y: Optional[np.ndarray] = None):
         return self.model.transform(x)
 
-    def predict(self, x: np.ndarray, y: np.ndarray = None):
+    def predict(self, x: np.ndarray, y: Optional[np.ndarray] = None):
         cum_sum = np.cumsum(self.model.explained_variance_ratio_)
         return np.argwhere(cum_sum <= self.cumulative).flatten()[-1]
 
@@ -108,7 +111,7 @@ class PSDFeatureExtractor(BaseEstimator, TransformerMixin):
         nperseg: int = 1024,
         noverlap: int = 512,
         normalize: bool = False,
-        threshold: float = None,
+        threshold: Optional[float] = None,
     ):
         super().__init__()
         self.nperseg = nperseg
@@ -125,10 +128,10 @@ class PSDFeatureExtractor(BaseEstimator, TransformerMixin):
     def combine_axis(self, x: np.ndarray) -> np.ndarray:
         return np.sqrt(np.sum(x**2, axis=0))
 
-    def fit(self, x: np.ndarray = None, y: np.ndarray = None):
+    def fit(self, x: Optional[np.ndarray] = None, y: Optional[np.ndarray] = None):
         return self
 
-    def transform(self, x: np.ndarray, y=None) -> np.ndarray:
+    def transform(self, x: np.ndarray, y: Optional[np.ndarray] = None) -> np.ndarray:
         y = []
         for xk in x:
             yk = []

@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, List
 
 import numpy as np
-from sklearn.base import BaseEstimator, TransformerMixin
+import numpy.typing as npt
+from sklearn.base import BaseEstimator, TransformerMixin  # type: ignore
 
 from classes.sample import SingleSample
 from classes.signal import SignalTime
@@ -32,7 +33,9 @@ class FeatureExtractor(ABC, BaseEstimator, TransformerMixin):
         else:
             return np.array(list(x.values()))
 
-    def transform(self, single_samples: List[SingleSample], y=None) -> np.ndarray:
+    def transform(
+        self, single_samples: list[SingleSample], y=None
+    ) -> npt.NDArray[np.float64]:
         y = []
         for single_sample in single_samples:
             feat_per_axis = {}

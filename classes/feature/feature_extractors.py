@@ -2,17 +2,16 @@ import sys
 
 sys.path.append("..")
 sys.path.append(".")
-from typing import Dict, List
 
 import librosa
-import mlflow.pyfunc
-import mlflow.sklearn
+import mlflow.pyfunc  # type: ignore
+import mlflow.sklearn  # type: ignore
 import numpy as np
-import scipy
+import scipy  # type: ignore
 import torch
 from numpy.typing import NDArray
-from pywt import WaveletPacket
-from scipy.signal import TransferFunction, welch
+from pywt import WaveletPacket  # type: ignore
+from scipy.signal import TransferFunction, welch  # type: ignore
 
 from classes.signal import SignalTime
 from training.utils import get_filename
@@ -28,9 +27,6 @@ class PassThroughFeatureExtractor(FeatureExtractor):
     def __init__(self):
         super().__init__()
 
-    # def transform(self, x: np.ndarray, y=None) -> np.ndarray:
-    #     return x
-
     def apply_transform(self, signal: SignalTime) -> np.ndarray:
         return signal
 
@@ -38,7 +34,7 @@ class PassThroughFeatureExtractor(FeatureExtractor):
 class RMSFeatureExtractor(FeatureExtractor):
     def __init__(
         self,
-        axis_to_combine: List[str] = [],
+        axis_to_combine: list[str] = [],
     ):
         super().__init__()
         self.normalize = False
@@ -59,7 +55,7 @@ class WPTFeatureExtractor(FeatureExtractor):
         family: str = "haar",
         level: int = 4,
         normalize: bool = False,
-        axis_to_combine: List[str] = [],
+        axis_to_combine: list[str] = [],
     ):
         super().__init__()
         self.family = family
@@ -87,7 +83,7 @@ class PSDFeatureExtractor(FeatureExtractor):
         normalize: bool = False,
         nperseg: int = 1024,
         poverlap: float = 0.5,
-        axis_to_combine: List[str] = [],
+        axis_to_combine: list[str] = [],
         window: str = "hamming",
     ):
         super().__init__()
@@ -111,14 +107,14 @@ class LPCFeatureExtractor(FeatureExtractor):
     def __init__(
         self,
         m: int = 5,
-        axis_to_combine: List[str] = [],
+        axis_to_combine: list[str] = [],
     ):
         super().__init__()
         self.axis_to_combine = []  # unable to combine
         self.m = m
         self.normalize = False
 
-    def apply_transform(self, signal: SignalTime) -> np.ndarray:
+    def apply_transform(self, signal: SignalTime) -> Poles:
         if not isinstance(signal, SignalTime):
             raise Exception("Signal must be of type SignalTime.")
         t, x = signal.get()
@@ -128,9 +124,6 @@ class LPCFeatureExtractor(FeatureExtractor):
         f = a / (2 * np.pi * signal.ts)
         r = scipy.signal.residue([1], w)
         return Poles(z=z, w=w, f=f, r=r)
-
-
-# combined
 
 
 class PCAFeatureReducer:
@@ -157,9 +150,6 @@ class PCAFeatureReducer:
         return pca_features
 
 
-#################### dev
-
-
 class LPCModel(torch.nn.Module):
     def __init__(self, m: int):
         super().__init__()
@@ -179,14 +169,14 @@ class LPCModel2(torch.nn.Module):
 
 
 class LPCFeatureExtractorTorch(FeatureExtractor):
-    """Implements the LPC feature extractor such that the weights are
+    """(WIP) Implements the LPC feature extractor such that the weights are
     restricted to be close to a reference vector.
     """
 
     def __init__(
         self,
         m: int = 5,
-        axis_to_combine: List[str] = [],
+        axis_to_combine: list[str] = [],
     ):
         super().__init__()
         self.axis_to_combine = []  # unable to combine
@@ -226,8 +216,6 @@ class LPCFeatureExtractorTorch(FeatureExtractor):
         w_ref = np.zeros(self.m)
         self.fit(x, w_ref)
         w = self.get_weights()
-        # a = librosa.lpc(win * np.array(x), order=self.m)
-        # a = np.flipud(w.squeeze())
         a = w.squeeze()
         z = np.roots(a)
         w = np.angle(z)
