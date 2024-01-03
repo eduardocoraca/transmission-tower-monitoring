@@ -8,7 +8,6 @@ from datetime import datetime
 from typing import Any
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd  # type: ignore
 from tqdm import tqdm  # type: ignore
 
@@ -85,10 +84,8 @@ class Loader:
             )
             sample = self.load_one(filename)
             for cable in Cables:
-                single_sample = sample[cable.value - 1]
-                features: npt.NDArray[np.float64] = self.feature_extractor.transform(
-                    [single_sample]
-                )
+                single_sample: SingleSample = sample[cable.value - 1]
+                features: np.ndarray = self.feature_extractor.transform([single_sample])
                 features_per_cable[cable].append(features)
                 tensions_per_cable[cable].append(single_sample.tension)
 

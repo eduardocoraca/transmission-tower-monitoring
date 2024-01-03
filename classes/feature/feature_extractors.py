@@ -103,6 +103,32 @@ class PSDFeatureExtractor(FeatureExtractor):
         return np.array(X[1:])  # avoid zero frequency
 
 
+class SSIFeatureExtractor(FeatureExtractor):
+    def __init__(
+        self,
+        normalize: bool = False,
+        nperseg: int = 1024,
+        poverlap: float = 0.5,
+        axis_to_combine: list[str] = [],
+        window: str = "hamming",
+    ):
+        super().__init__()
+        self.nperseg = nperseg
+        self.poverlap = poverlap
+        self.window = window
+        self.axis_to_combine = axis_to_combine
+        self.normalize = normalize
+
+    def apply_transform(self, signal: SignalTime) -> np.ndarray:
+        if not isinstance(signal, SignalTime):
+            raise Exception("Signal must be of type SignalTime.")
+        spectrum = signal.to_spectrum(
+            window=self.window, nperseg=self.nperseg, poverlap=self.poverlap
+        )
+        f, X = spectrum.get()
+        return np.array(X[1:])  # avoid zero frequency
+
+
 class LPCFeatureExtractor(FeatureExtractor):
     def __init__(
         self,
