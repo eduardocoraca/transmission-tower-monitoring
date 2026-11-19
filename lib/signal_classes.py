@@ -1,16 +1,12 @@
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Tuple, Union
-
 import matplotlib.pyplot as plt
 import numpy as np
-from interfaces import Signal
-from scipy.fftpack import dct, fft, idct, ifft
+from scipy.fftpack import dct, idct
 from scipy.signal import spectrogram, welch
+from pydantic import BaseModel
 
-
-@dataclass
-class SignalSpectrum(Signal):
+class SignalSpectrum(BaseModel):
     frequencies: list
     magnitudes: list
 
@@ -18,18 +14,16 @@ class SignalSpectrum(Signal):
         return self.frequencies, self.magnitudes
 
 
-@dataclass
-class SignalSpectrogram(Signal):
+class SignalSpectrogram(BaseModel):
     frequencies: list
     time: list
     magnitudes: np.ndarray
 
-    def get(self) -> Tuple[List, List]:
+    def get(self) -> Tuple[list[float], list[float], list[float]]:
         return self.frequencies, self.time, self.magnitudes
 
 
-@dataclass
-class SignalTime(Signal):
+class SignalTime(BaseModel):
     signal: list
     ts: float
 
@@ -81,8 +75,7 @@ class SignalTime(Signal):
         return list(t), list(self.signal)
 
 
-@dataclass
-class SignalDCT(Signal):
+class SignalDCT(BaseModel):
     coefficients: list
     indexes: list
     original_length: int
@@ -182,8 +175,7 @@ class SignalDCT(Signal):
 ########################
 
 
-@dataclass
-class SingleSample:
+class SingleSample(BaseModel):
     """Sample measurement containing data from a single cable"""
 
     x: Union[SignalTime, SignalDCT] = None
@@ -229,8 +221,7 @@ class SingleSample:
             self.type = "time"
 
 
-@dataclass
-class Sample:
+class Sample(BaseModel):
     """Sample measurements containing data from all cables"""
 
     sample_id: str

@@ -18,8 +18,8 @@ def make_hmm(
             n_mix=n_mix,
             init_params="smcw",
             covariance_type=covariance_type,
-            min_covar=1e-1,
-            n_iter=100,
+            min_covar=min_covar,
+            n_iter=n_iter,
             tol=tol,
         )
         hmm.transmat_ = initialize(n_components)
@@ -29,8 +29,8 @@ def make_hmm(
             n_mix=n_mix,
             init_params="stmcw",
             covariance_type=covariance_type,
-            min_covar=1e-1,
-            n_iter=100,
+            min_covar=min_covar,
+            n_iter=n_iter,
             tol=tol,
         )
     return hmm
